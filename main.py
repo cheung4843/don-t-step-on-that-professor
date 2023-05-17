@@ -143,7 +143,7 @@ def keyboard_input(input_key: int):
 
 class Head(pygame.sprite.Sprite):
     # 生成點
-    path = [41.6 + 83.3 * i for i in range(6)]
+    path = [SCREEN_WIDTH / 12 + SCREEN_WIDTH / 6 * i for i in range(6)]
 
     # 傳入初始化位置
     def __init__(self, path_no=0):
