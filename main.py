@@ -42,6 +42,7 @@ for i in range(1, 30):
 """
 音效載入
 """
+man_scream_sound = pygame.mixer.Sound(os.path.join("sound", "man_scream.mp3"))
 
 """
 音樂播放
