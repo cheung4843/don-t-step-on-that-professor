@@ -20,6 +20,8 @@ PATH = [SCREEN_WIDTH / 12 + SCREEN_WIDTH / 6 * i for i in range(6)]
 KEY = ['S', 'D', 'F', 'J', 'K', 'L']
 KEY_CODE = [pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_j, pygame.K_k, pygame.K_l]
 
+LINE_BASE = SCREEN_HEIGHT - 150
+
 """
 遊戲初始化
 """
@@ -44,16 +46,31 @@ for i in range(1, 30):
     head_imgs.append(pygame.transform.scale(img, (width // 3, height // 3)).convert())
 
 """
+爆炸動畫
+"""
+expl_anim = {"big": [], "small": []}
+for i in range(9):
+    expl_img = pygame.image.load(os.path.join("image", f"expl{i}.png")).convert()
+    expl_img.set_colorkey(BLACK)
+    expl_anim['big'].append(pygame.transform.scale(expl_img, (100, 100)))
+    expl_anim['small'].append(pygame.transform.scale(expl_img, (50, 50)))
+
+"""
 音效載入
 """
 man_scream_sound = pygame.mixer.Sound(os.path.join("sound", "man_scream.mp3"))
+expl_sounds = [pygame.mixer.Sound(os.path.join("sound", "expl0.wav")),
+               pygame.mixer.Sound(os.path.join("sound", "expl1.wav"))]
+bonk_sound = pygame.mixer.Sound(os.path.join("sound", "bonk.mp3"))
 
 """
 音樂播放
 """
 pygame.mixer.music.load(os.path.join("music", "12_Variations_of_Twinkle_Twinkle_Little_Star.mp3"))
-pygame.mixer.music.play(-1)
-pygame.mixer.music.set_volume(0.7)
+
+
+# pygame.mixer.music.play(-1)
+# pygame.mixer.music.set_volume(0.7)
 
 
 def draw_text(surf: pygame.Surface, text, size, x, y):
@@ -99,7 +116,7 @@ def draw_gap(surf: pygame.Surface):
     for _ in range(6):
         pygame.draw.line(surf, WHITE, (x, 0), (x, SCREEN_HEIGHT), 4)
         x += gap
-    pygame.draw.line(surf, WHITE, (0, SCREEN_HEIGHT - 100), (SCREEN_WIDTH, SCREEN_HEIGHT - 100), 4)
+    pygame.draw.line(surf, WHITE, (0, LINE_BASE), (SCREEN_WIDTH, LINE_BASE), 4)
 
 
 def draw_circle(surf: pygame.Surface):
@@ -148,37 +165,16 @@ def initialize():
     pass
 
 
-def keyboard_input(input_key: int, head):
+def perfect_input(input_key: int, head):
     path_no = head.path_no
-    print(path_no)
-    match input_key:
-        case pygame.K_s:
-            if path_no == 0:
-                head.kill()
-                print('S')
-        case pygame.K_d:
-            if path_no == 1:
-                head.kill()
-                print('D')
-        case pygame.K_f:
-            if path_no == 2:
-                head.kill()
-                print('F')
-        case pygame.K_j:
-            if path_no == 3:
-                head.kill()
-                print('J')
-        case pygame.K_k:
-            if path_no == 4:
-                head.kill()
-                print('K')
-        case pygame.K_l:
-            if path_no == 5:
-                head.kill()
-                print('L')
-        case _:
-            # print('OTHER KEY DOWN')
-            pass
+    if input_key == KEY_CODE[path_no]:
+        global score
+        expl = Explosion(head.rect.center, "big")
+        all_sprites.add(expl)
+        random.choice(expl_sounds).play()
+        man_scream_sound.play()
+        score += int(head.radius)
+        head.kill()
 
 
 class Head(pygame.sprite.Sprite):
@@ -215,13 +211,20 @@ class Head(pygame.sprite.Sprite):
         self.rect.y += self.speed_y
         # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
 
-        # key_pressed = pygame.key.get_pressed()
-        # if key_pressed[KEY_CODE[self.path_no]]:
-        #     self.kill()
+        # 一般得分
+        if self.rect.top > LINE_BASE:
+            key_pressed = pygame.key.get_pressed()
+            if key_pressed[KEY_CODE[self.path_no]]:
+                score += int(self.radius * 0.5)
+                bonk_sound.play()
+                expl = Explosion(self.rect.center, "small")
+                all_sprites.add(expl)
+                self.kill()
 
         # ToBeEdited
         if self.rect.top > SCREEN_HEIGHT or self.rect.left > SCREEN_WIDTH or self.rect.right < 0:
-            self.rect.centerx = random.choice(PATH)
+            self.path_no = random.randint(0, 5)
+            self.rect.centerx = PATH[self.path_no]
             self.rect.centery = random.randrange(-180, -100)
             self.speed_y = random.randrange(2, 5)
             # 扣分
@@ -231,14 +234,42 @@ class Head(pygame.sprite.Sprite):
 class DetectedPoint(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((10, 10))
+        self.image = pygame.Surface((20, 20))
         self.image.fill(WHITE)
         self.rect = self.image.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
+        self.radius = 10
+        # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
 
     def update(self):
         pass
+
+
+class Explosion(pygame.sprite.Sprite):
+    # size : big or small
+    def __init__(self, center, size: str):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = size
+        self.image = expl_anim[self.size][0]
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.frame = 0
+        self.last_update = pygame.time.get_ticks()
+        self.frame_rate = 50
+
+    def update(self):
+        cur_time = pygame.time.get_ticks()
+        if cur_time - self.last_update > self.frame_rate:
+            self.last_update = cur_time
+            self.frame += 1
+            if self.frame == len(expl_anim[self.size]):
+                self.kill()
+            else:
+                self.image = expl_anim[self.size][self.frame]
+                center = self.rect.center
+                self.rect = self.image.get_rect()
+                self.rect.center = center
 
 
 """
@@ -251,7 +282,7 @@ detected_points = pygame.sprite.Group()
 score = 0
 # 偵測點
 for x in PATH:
-    new_detected_point(x, SCREEN_HEIGHT - 100)
+    new_detected_point(x, LINE_BASE)
 # head 落下測試
 for _ in range(8):
     new_head()
@@ -281,11 +312,13 @@ while running:
 
     # 更新遊戲
     all_sprites.update()
-    # 頭與偵測點碰撞
-    hits = pygame.sprite.groupcollide(heads, detected_points, False, False)
+    # 頭與偵測點碰撞(完美得分)
+    hits = pygame.sprite.groupcollide(heads, detected_points, False, False, pygame.sprite.collide_circle)
     for hit in hits:
-        keyboard_input(key_down, hit)
-
+        perfect_input(key_down, hit)
+    if not heads:
+        for _ in range(8):
+            new_head()
     # 畫面更新
     screen.blit(background_img, (0, 0))
     draw_gap(screen)
