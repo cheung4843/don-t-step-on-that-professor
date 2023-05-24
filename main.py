@@ -62,15 +62,15 @@ man_scream_sound = pygame.mixer.Sound(os.path.join("sound", "man_scream.mp3"))
 expl_sounds = [pygame.mixer.Sound(os.path.join("sound", "expl0.wav")),
                pygame.mixer.Sound(os.path.join("sound", "expl1.wav"))]
 bonk_sound = pygame.mixer.Sound(os.path.join("sound", "bonk.mp3"))
+bonk_sound.set_volume(2)
+ugh_sound = pygame.mixer.Sound(os.path.join("sound", "ugh.mp3"))
 
 """
 音樂播放
 """
 pygame.mixer.music.load(os.path.join("music", "12_Variations_of_Twinkle_Twinkle_Little_Star.mp3"))
-
-
-# pygame.mixer.music.play(-1)
-# pygame.mixer.music.set_volume(0.7)
+pygame.mixer.music.play(-1)
+pygame.mixer.music.set_volume(0.7)
 
 
 def draw_text(surf: pygame.Surface, text, size, x, y):
@@ -229,6 +229,7 @@ class Head(pygame.sprite.Sprite):
             self.speed_y = random.randrange(2, 5)
             # 扣分
             score -= int(self.radius)
+            ugh_sound.play()
 
 
 class DetectedPoint(pygame.sprite.Sprite):
@@ -323,6 +324,7 @@ while running:
     screen.blit(background_img, (0, 0))
     draw_gap(screen)
     draw_text(screen, f'{score}', 18, SCREEN_WIDTH - 50, SCREEN_HEIGHT - 50)
+    draw_text(screen, f'{pygame.time.get_ticks() / 1000:.1f}', 18, 40, SCREEN_HEIGHT - 50)
     # draw_circle(screen)
     draw_key(screen)
     all_sprites.draw(screen)
