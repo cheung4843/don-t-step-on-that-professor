@@ -1,6 +1,10 @@
+from pprint import pprint
+from collections import deque
+
 import pygame
 import random
 import os
+import pandas as pd
 
 """
 常數設定
@@ -21,6 +25,7 @@ KEY = ['S', 'D', 'F', 'J', 'K', 'L']
 KEY_CODE = [pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_j, pygame.K_k, pygame.K_l]
 
 LINE_BASE = SCREEN_HEIGHT - 150
+START_TIME = 0
 
 """
 遊戲初始化
@@ -34,7 +39,7 @@ clock = pygame.time.Clock()
 """
 素材載入
 """
-background_img = pygame.image.load(os.path.join("image", "background.png")).convert()
+background_img = pygame.image.load(os.path.join("image", "background2.jpg")).convert()
 font_name = os.path.join("font.ttf")
 head_imgs = []
 for i in range(1, 30):
@@ -66,11 +71,9 @@ bonk_sound.set_volume(2)
 ugh_sound = pygame.mixer.Sound(os.path.join("sound", "ugh.mp3"))
 
 """
-音樂播放
+音樂載入
 """
-pygame.mixer.music.load(os.path.join("music", "12_Variations_of_Twinkle_Twinkle_Little_Star.mp3"))
-pygame.mixer.music.play(-1)
-pygame.mixer.music.set_volume(0.7)
+pygame.mixer.music.load(os.path.join("music", "twinkle_twinkle_little_star_143secs.mp3"))
 
 
 def draw_text(surf: pygame.Surface, text, size, x, y):
@@ -88,21 +91,23 @@ def draw_text(surf: pygame.Surface, text, size, x, y):
 
 def draw_init():
     """
-    顯示初始畫面
+    顯示初始畫面，並記錄遊戲開始時間，並開始播放音樂
     :return: 是否按下任意鍵
     """
     screen.blit(background_img, (0, 0))
     draw_text(screen, '按下任意鍵開始遊戲', 18, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 3 / 4)
     pygame.display.update()
-    waiting = True
-    while waiting:
+    while True:
         clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return True
             elif event.type == pygame.KEYUP:
-                waiting = False
+                global START_TIME
+                START_TIME = pygame.time.get_ticks()
+                pygame.mixer.music.play(-1)
+                pygame.mixer.music.set_volume(0.7)
                 return False
 
 
@@ -141,12 +146,12 @@ def draw_key(surf: pygame.Surface):
         draw_text(surf, KEY[i], 20, x, 20)
 
 
-def new_head():
+def new_head(path_no=0):
     """
     產生新的頭
     :return: None
     """
-    head = Head()
+    head = Head(int(path_no))
     all_sprites.add(head)
     heads.add(head)
 
@@ -161,11 +166,31 @@ def new_detected_point(x, y):
     detected_points.add(point)
 
 
+def get_game_time():
+    """
+    取得玩家按下任意按鍵後，開始計算的時間
+    :return: sec
+    """
+    return (pygame.time.get_ticks() - START_TIME) / 1000
+
+
+def load_sheet():
+    """
+    讀譜，回傳佇列
+    :return: deque
+    """
+    sheet_csv = pd.read_csv(f'{os.path.join("sheet.csv")}')
+    sheet = sheet_csv.values.tolist()
+    # pprint(sheet)
+    return deque(sheet)
+
+
 def initialize():
     pass
 
 
 def perfect_input(input_key: int, head):
+    # print(get_game_time())
     path_no = head.path_no
     if input_key == KEY_CODE[path_no]:
         global score
@@ -183,20 +208,21 @@ class Head(pygame.sprite.Sprite):
     def __init__(self, path_no=0):
         pygame.sprite.Sprite.__init__(self)
         # ToBeEdited
-        self.image_ori = random.choice(head_imgs)
-        # self.image_ori = pygame.Surface((50, 40))
-        # self.image_ori.fill(GREEN)
+        # self.image_ori = random.choice(head_imgs)
+        self.image_ori = pygame.Surface((50, 40))
+        self.image_ori.fill(GREEN)
         self.image = self.image_ori.copy()
         self.rect = self.image.get_rect()
         self.radius = self.rect.width * 0.85 / 2
         self.total_degree = 0
         self.rot_degree = random.randrange(-3, 3)
-        # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
+        pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
         # ToBeEdited
-        self.path_no = random.randint(0, 5)
+        # self.path_no = random.randint(0, 5)
+        self.path_no = path_no
         self.rect.centerx = PATH[self.path_no]
         self.rect.centery = random.randrange(-180, -100)
-        self.speed_y = random.randrange(2, 5)
+        self.speed_y = 6
 
     def rotate(self):
         self.total_degree = (self.total_degree + self.rot_degree) % 360
@@ -223,13 +249,14 @@ class Head(pygame.sprite.Sprite):
 
         # ToBeEdited
         if self.rect.top > SCREEN_HEIGHT or self.rect.left > SCREEN_WIDTH or self.rect.right < 0:
-            self.path_no = random.randint(0, 5)
-            self.rect.centerx = PATH[self.path_no]
-            self.rect.centery = random.randrange(-180, -100)
-            self.speed_y = random.randrange(2, 5)
+            # self.path_no = random.randint(0, 5)
+            # self.rect.centerx = PATH[self.path_no]
+            # self.rect.centery = random.randrange(-180, -100)
+            # self.speed_y = random.randrange(2, 5)
             # 扣分
             score -= int(self.radius)
             ugh_sound.play()
+            self.kill()
 
 
 class DetectedPoint(pygame.sprite.Sprite):
@@ -285,8 +312,9 @@ score = 0
 for x in PATH:
     new_detected_point(x, LINE_BASE)
 # head 落下測試
-for _ in range(8):
-    new_head()
+# for _ in range(8):
+#     new_head()
+sheet_q = load_sheet()
 
 """
 遊戲迴圈
@@ -317,15 +345,25 @@ while running:
     hits = pygame.sprite.groupcollide(heads, detected_points, False, False, pygame.sprite.collide_circle)
     for hit in hits:
         perfect_input(key_down, hit)
-    if not heads:
-        for _ in range(8):
-            new_head()
+    # if not heads:
+    #     for _ in range(8):
+    #         new_head()
     # 畫面更新
     screen.blit(background_img, (0, 0))
     draw_gap(screen)
     draw_text(screen, f'{score}', 18, SCREEN_WIDTH - 50, SCREEN_HEIGHT - 50)
-    draw_text(screen, f'{pygame.time.get_ticks() / 1000:.1f}', 18, 40, SCREEN_HEIGHT - 50)
-    # draw_circle(screen)
+    cur_time = get_game_time()
+    draw_text(screen, f'{cur_time:.1f}', 18, 40, SCREEN_HEIGHT - 50)
+    if sheet_q and cur_time >= sheet_q[0][0]:
+        t, a, b, c = sheet_q.popleft()
+        print(f'{t}: {a:.0f} {b:.0f} {c:.0f}')
+        if a > 0:
+            new_head(a - 1)
+        if b > 0:
+            new_head(b - 1)
+        if c > 0:
+            new_head(c - 1)
+
     draw_key(screen)
     all_sprites.draw(screen)
     pygame.display.update()
