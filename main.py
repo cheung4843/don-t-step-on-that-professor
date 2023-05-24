@@ -16,6 +16,10 @@ RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 BLACK = (0, 0, 0)
 
+PATH = [SCREEN_WIDTH / 12 + SCREEN_WIDTH / 6 * i for i in range(6)]
+KEY = ['S', 'D', 'F', 'J', 'K', 'L']
+KEY_CODE = [pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_j, pygame.K_k, pygame.K_l]
+
 """
 遊戲初始化
 """
@@ -100,13 +104,24 @@ def draw_gap(surf: pygame.Surface):
 
 def draw_circle(surf: pygame.Surface):
     """
-    測試點
+    畫出生成點
     :param surf:
     :return:
     """
-    path = Head.path
-    for x in path:
+
+    for x in PATH:
         pygame.draw.circle(surf, WHITE, (x, 20), 10, 4)
+
+
+def draw_key(surf: pygame.Surface):
+    """
+    畫出按鍵提示
+    :param surf:
+    :return:
+    """
+    for i in range(len(PATH)):
+        x = PATH[i]
+        draw_text(surf, KEY[i], 20, x, 20)
 
 
 def new_head():
@@ -119,31 +134,54 @@ def new_head():
     heads.add(head)
 
 
+def new_detected_point(x, y):
+    """
+    產生新的偵測點
+    :return:
+    """
+    point = DetectedPoint(x, y)
+    all_sprites.add(point)
+    detected_points.add(point)
+
+
 def initialize():
     pass
 
 
-def keyboard_input(input_key: int):
+def keyboard_input(input_key: int, head):
+    path_no = head.path_no
+    print(path_no)
     match input_key:
         case pygame.K_s:
-            pass
+            if path_no == 0:
+                head.kill()
+                print('S')
         case pygame.K_d:
-            pass
+            if path_no == 1:
+                head.kill()
+                print('D')
         case pygame.K_f:
-            pass
+            if path_no == 2:
+                head.kill()
+                print('F')
         case pygame.K_j:
-            pass
+            if path_no == 3:
+                head.kill()
+                print('J')
         case pygame.K_k:
-            pass
+            if path_no == 4:
+                head.kill()
+                print('K')
         case pygame.K_l:
-            pass
+            if path_no == 5:
+                head.kill()
+                print('L')
         case _:
-            print('OTHER KEY DOWN')
+            # print('OTHER KEY DOWN')
+            pass
 
 
 class Head(pygame.sprite.Sprite):
-    # 生成點
-    path = [SCREEN_WIDTH / 12 + SCREEN_WIDTH / 6 * i for i in range(6)]
 
     # 傳入初始化位置
     def __init__(self, path_no=0):
@@ -157,8 +195,10 @@ class Head(pygame.sprite.Sprite):
         self.radius = self.rect.width * 0.85 / 2
         self.total_degree = 0
         self.rot_degree = random.randrange(-3, 3)
+        # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
         # ToBeEdited
-        self.rect.centerx = random.choice(self.path)
+        self.path_no = random.randint(0, 5)
+        self.rect.centerx = PATH[self.path_no]
         self.rect.centery = random.randrange(-180, -100)
         self.speed_y = random.randrange(2, 5)
 
@@ -170,19 +210,35 @@ class Head(pygame.sprite.Sprite):
         self.rect.center = center
 
     def update(self):
+        global score
         self.rotate()
         self.rect.y += self.speed_y
+        # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
+
+        # key_pressed = pygame.key.get_pressed()
+        # if key_pressed[KEY_CODE[self.path_no]]:
+        #     self.kill()
 
         # ToBeEdited
         if self.rect.top > SCREEN_HEIGHT or self.rect.left > SCREEN_WIDTH or self.rect.right < 0:
-            self.rect.centerx = random.choice(self.path)
+            self.rect.centerx = random.choice(PATH)
             self.rect.centery = random.randrange(-180, -100)
             self.speed_y = random.randrange(2, 5)
+            # 扣分
+            score -= int(self.radius)
 
 
 class DetectedPoint(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((10, 10))
+        self.image.fill(WHITE)
+        self.rect = self.image.get_rect()
+        self.rect.centerx = x
+        self.rect.centery = y
+
+    def update(self):
+        pass
 
 
 """
@@ -191,7 +247,11 @@ class DetectedPoint(pygame.sprite.Sprite):
 # 創建sprites群組
 all_sprites = pygame.sprite.Group()
 heads = pygame.sprite.Group()
+detected_points = pygame.sprite.Group()
 score = 0
+# 偵測點
+for x in PATH:
+    new_detected_point(x, SCREEN_HEIGHT - 100)
 # head 落下測試
 for _ in range(8):
     new_head()
@@ -212,19 +272,26 @@ while running:
         show_init = False
         initialize()
     clock.tick(FPS)
+    key_down = 'X'
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
-            keyboard_input(event.key)
+            key_down = event.key
 
     # 更新遊戲
     all_sprites.update()
+    # 頭與偵測點碰撞
+    hits = pygame.sprite.groupcollide(heads, detected_points, False, False)
+    for hit in hits:
+        keyboard_input(key_down, hit)
 
     # 畫面更新
     screen.blit(background_img, (0, 0))
     draw_gap(screen)
-    draw_circle(screen)
+    draw_text(screen, f'{score}', 18, SCREEN_WIDTH - 50, SCREEN_HEIGHT - 50)
+    # draw_circle(screen)
+    draw_key(screen)
     all_sprites.draw(screen)
     pygame.display.update()
 
