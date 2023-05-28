@@ -43,6 +43,7 @@ clock = pygame.time.Clock()
 素材載入
 """
 background_init_img = pygame.image.load(os.path.join("image", "background4.jpg")).convert()
+pygame.display.set_icon(background_init_img)
 background_img = pygame.image.load(os.path.join("image", "background3.jpg")).convert()
 background_end_img = pygame.image.load(os.path.join("image", "background.png")).convert()
 bad_end_img = pygame.image.load(os.path.join("image", "bad_end2.png")).convert()
