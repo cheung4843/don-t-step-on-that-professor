@@ -202,7 +202,7 @@ def draw_gap(surf: pygame.Surface):
 
 def draw_circle(surf: pygame.Surface):
     """
-    畫出生成點
+    畫出生成點，測試用
     :param surf:
     :return:
     """
@@ -244,7 +244,7 @@ def new_detected_point(x, y):
 
 def get_game_time():
     """
-    取得玩家按下任意按鍵後，開始計算的時間
+    取得玩家開始遊戲後，開始計算的時間
     :return: sec
     """
     return (pygame.time.get_ticks() - START_TIME) / 1000
@@ -252,7 +252,7 @@ def get_game_time():
 
 def load_sheet():
     """
-    讀譜，回傳譜佇列
+    讀譜，回傳譜佇列、開始時間、結束時間
     :return: deque
     """
     sheet_csv = pd.read_csv(f'{os.path.join("sheet.csv")}')
@@ -446,10 +446,12 @@ while running:
     draw_text(screen, f'Perfect: {perfect_cnt}', 18, 125, SCREEN_HEIGHT - 50, BLACK)
     cur_time = get_game_time()
     draw_text(screen, f'{cur_time:.1f}', 18, 40, SCREEN_HEIGHT - 50, BLACK)
+    # 到達開始時間才播放音樂
     if sheet_q and cur_time >= sheet_start_time and ON_PLAYED and not show_end:
         pygame.mixer.music.play()
         pygame.mixer.music.set_volume(0.7)
         ON_PLAYED = False
+    # 依據譜放置頭
     if sheet_q and cur_time >= sheet_q[0][0] and not show_end:
         t, a, b, c = sheet_q.popleft()
         print(f'{t}: {a:.0f} {b:.0f} {c:.0f}')
